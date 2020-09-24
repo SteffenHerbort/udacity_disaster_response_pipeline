@@ -1,16 +1,60 @@
 import sys
 
+import pandas as pd
+from sqlalchemy import create_engine
+
 
 def load_data(messages_filepath, categories_filepath):
-    pass
+    
+    #-- load from file
+    messages   = pd.read_csv(messages_filepath)
+    categories = pd.read_csv(categories_filepath)
+    
+    #-- merge based on "id"
+    df = messages.merge(categories, on="id")
+
+    return df
+    
+    
 
 
 def clean_data(df):
-    pass
+    #-- now, take care of the column names
+    categories = df["categories"].str.split(";", expand=True)
+
+    # select the first row of the categories dataframe
+    row = categories.iloc[0]
+    
+    # use this row to extract a list of new column names for categories.
+    # one way is to apply a lambda function that takes everything 
+    # up to the second to last character of each string with slicing
+    category_colnames = row.apply(lambda x: x[:-2])
+    
+    # set these as the column names
+    categories.columns = category_colnames
+
+    #-- Convert category values to just numbers 0 or 1
+    for column in categories:
+        # set each value to be the last character of the string
+        categories[column] = categories[column].apply(lambda x: x[-1])
+        
+        # convert column from string to numeric
+        categories[column] = categories[column].astype(int)
+
+    
+    #-- Replace categories column in df with new category columns.
+    df = df.drop('categories', axis=1)
+    df = pd.concat([df, categories], axis=1)
+    
+    #-- drop duplicates
+    df = df.drop_duplicates()
+    
+    return df
 
 
 def save_data(df, database_filename):
-    pass  
+    engine = create_engine('sqlite:///' + database_filename)
+    df.to_sql('DisasterResponsePipelineData', engine, index=False)
 
 
 def main():
@@ -20,6 +64,7 @@ def main():
 
         print('Loading data...\n    MESSAGES: {}\n    CATEGORIES: {}'
               .format(messages_filepath, categories_filepath))
+        
         df = load_data(messages_filepath, categories_filepath)
 
         print('Cleaning data...')
