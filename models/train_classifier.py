@@ -45,7 +45,7 @@ def getParameters():
          'vect__max_df': [1.0],
          'vect__max_features': [None],
          'vect__min_df': [1],
-         'vect__ngram_range': ((1, 1), (1, 2)),
+         'vect__ngram_range': ((1, 1), (1, 3)),
          'vect__preprocessor': [None],
          'vect__stop_words': [None],
          'vect__strip_accents': [None],
@@ -54,7 +54,7 @@ def getParameters():
          'tfidf__norm': ['l2'],
          'tfidf__smooth_idf': [True],
          'tfidf__sublinear_tf': [False],
-         'tfidf__use_idf': (True, False),
+         'tfidf__use_idf': [False],
          'clf__estimator__bootstrap': [True],
          'clf__estimator__class_weight': [None],
          'clf__estimator__criterion': ['gini'],
@@ -66,7 +66,7 @@ def getParameters():
          'clf__estimator__min_samples_leaf': [1],
          'clf__estimator__min_samples_split': [2],
          'clf__estimator__min_weight_fraction_leaf': [0.0],
-         'clf__estimator__n_estimators': (5, 10, 20),
+         'clf__estimator__n_estimators': [100, 500],
          'clf__estimator__n_jobs': [20],
          'clf__estimator__oob_score': [False],
          'clf__estimator__random_state': [42],
@@ -158,13 +158,13 @@ def optimize_model( model, X_test, Y_test, X_train, Y_train, category_names ):
     for elem in cv.cv_results_ :
         print(elem)
         
-    avg_precision, avg_recall, avg_f1, precision, recall, f1 = evaluate_model(best_model, X_test, Y_test, category_names)
+    avg_precision, avg_recall, avg_f1, precision, recall, f1 = evaluate_model(cv.best_estimator_, X_test, Y_test, category_names)
     print("BEST AVG precision, recall, f1 =    %8.6f       %8.6f    %8.6f"%(avg_precision, avg_recall, avg_f1))  
     
 
 
 def save_model(model, model_filepath):
-    pickle.dump( model, open( "model_filepath", "wb" ) )
+    pickle.dump( model, open( model_filepath, "wb" ) )
     return
 
 
