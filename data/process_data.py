@@ -1,3 +1,5 @@
+# python3 ./data/process_data.py ./data/disaster_messages.csv ./data/disaster_categories.csv ./data/DisasterResponsePipelineData.db
+
 import sys
 
 import pandas as pd
@@ -54,7 +56,7 @@ def clean_data(df):
 
 def save_data(df, database_filename):
     engine = create_engine('sqlite:///' + database_filename)
-    df.to_sql('DisasterResponsePipelineData', engine, index=False)
+    df.to_sql('DisasterResponsePipelineData', engine, index=False, if_exists = "replace")
 
 
 def main():
