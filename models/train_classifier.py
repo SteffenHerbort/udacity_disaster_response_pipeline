@@ -15,21 +15,21 @@ from sqlalchemy import create_engine
 from nltk.tokenize import word_tokenize
 from nltk.stem import WordNetLemmatizer
 
-
-from sklearn.pipeline import Pipeline
-#from sklearn.metrics import confusion_matrix
-#from sklearn.metrics import classification_report
+from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.metrics import precision_score
 from sklearn.metrics import recall_score
 from sklearn.metrics import f1_score
 
 from sklearn.model_selection import train_test_split
+from sklearn.model_selection import GridSearchCV
 from sklearn.multioutput import MultiOutputClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 
-from sklearn.model_selection import GridSearchCV
+from custom_transformers import NumCharsExtractor
 
+
+text_to_entity_map = pickle.load(open("text_to_entity_map.pck", "rb"))
 url_regex = 'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
 lemmatizer = WordNetLemmatizer()
 
@@ -43,9 +43,9 @@ def getParameters():
          'vect__input': ['content'],
          'vect__lowercase': [True],
          'vect__max_df': [1.0],
-         'vect__max_features': [None],
+         'vect__max_features': [900],
          'vect__min_df': [1],
-         'vect__ngram_range': ((1, 1), (1, 3)),
+         'vect__ngram_range': ((1, 1), (1, 2)),
          'vect__preprocessor': [None],
          'vect__stop_words': [None],
          'vect__strip_accents': [None],
@@ -66,7 +66,7 @@ def getParameters():
          'clf__estimator__min_samples_leaf': [1],
          'clf__estimator__min_samples_split': [2],
          'clf__estimator__min_weight_fraction_leaf': [0.0],
-         'clf__estimator__n_estimators': [100, 500],
+         'clf__estimator__n_estimators': [100],
          'clf__estimator__n_jobs': [20],
          'clf__estimator__oob_score': [False],
          'clf__estimator__random_state': [42],
@@ -86,7 +86,12 @@ def tokenize(text):
     detected_urls = re.findall(url_regex, text)
     for url in detected_urls:
         text = text.replace(url, "urlplaceholder")
-
+        
+    #for all entities, add their type to the text
+    for entity in text_to_entity_map.keys():
+        if entity in text:
+            text = text.replace(entity, text_to_entity_map[entity])
+        
     tokens = word_tokenize(text)
     
     clean_tokens = []
@@ -97,12 +102,28 @@ def tokenize(text):
     return clean_tokens
 
 
-def build_model():
-    pipeline = Pipeline([
-            ('vect', CountVectorizer(tokenizer=tokenize)),
-            ('tfidf', TfidfTransformer()),
-            ('clf', MultiOutputClassifier(RandomForestClassifier(n_jobs=20)))
-        ])
+def build_model(str_model = ""):
+   
+    if str_model == "+num_chars":
+        pipeline = Pipeline([
+            ('features', FeatureUnion([
+    
+                ('text_pipeline', Pipeline([
+                    ('vect', CountVectorizer(tokenizer=tokenize)),
+                    ('tfidf', TfidfTransformer())
+                ])),
+    
+                ('num_chars', NumCharsExtractor())
+            ])),
+    
+            ('clf', MultiOutputClassifier(RandomForestClassifier(n_jobs=20, random_state=42)))
+        ])        
+    else:
+        pipeline = Pipeline([
+                ('vect', CountVectorizer(tokenizer=tokenize)),
+                ('tfidf', TfidfTransformer()),
+                ('clf', MultiOutputClassifier(RandomForestClassifier(n_jobs=20, random_state=42)))
+            ])
     return pipeline
 
 
@@ -154,18 +175,17 @@ def optimize_model( model, X_test, Y_test, X_train, Y_train, category_names ):
     
     return cv.best_estimator_
     
-    
-    for elem in cv.cv_results_ :
-        print(elem)
-        
-    avg_precision, avg_recall, avg_f1, precision, recall, f1 = evaluate_model(cv.best_estimator_, X_test, Y_test, category_names)
-    print("BEST AVG precision, recall, f1 =    %8.6f       %8.6f    %8.6f"%(avg_precision, avg_recall, avg_f1))  
-    
 
 
 def save_model(model, model_filepath):
     pickle.dump( model, open( model_filepath, "wb" ) )
     return
+
+def save_params(model, params_filepath):
+    params = model.get_params().copy()
+    pickle.dump( params, open( params_filepath, "wb" ) )
+    return
+
 
 
 def main():
@@ -173,19 +193,25 @@ def main():
         database_filepath, model_filepath = sys.argv[1:]
         print('Loading data...\n    DATABASE: {}'.format(database_filepath))
         X, Y, category_names = load_data(database_filepath)
-        X=X["message"]
+        X = X["message"]
         X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2)
         
-        print('Building model...')
-        model = build_model()
+        if True:
+            print('Building model...')
+            model = build_model()
+            
+            print('Optimize model...')
+            model = optimize_model( model, X_test, Y_test, X_train, Y_train, category_names )
+            print('Evaluating optimized model...')
+            avg_precision, avg_recall, avg_f1, precision, recall, f1 = evaluate_model(model, X_test, Y_test, category_names)
+            print_evaluation(avg_precision, avg_recall, avg_f1, precision, recall, f1, category_names)        
+            print(model.get_params())
         
-        print('Optimize model...')
-        model = optimize_model( model, X_test, Y_test, X_train, Y_train, category_names )
-        print('Evaluating optimized model...')
-        avg_precision, avg_recall, avg_f1, precision, recall, f1 = evaluate_model(model, X_test, Y_test, category_names)
-        print_evaluation(avg_precision, avg_recall, avg_f1, precision, recall, f1, category_names)        
-        
-        
+            print('Saving model...\n    MODEL: {}'.format(model_filepath))
+            save_model(model, model_filepath)
+            save_params(model, "best_params.pkl")
+            print('Optimized model saved!')
+       
         print('Building model...')
         model_default = build_model()        
         
@@ -195,14 +221,13 @@ def main():
         print('Evaluating model...')
         avg_precision, avg_recall, avg_f1, precision, recall, f1 = evaluate_model(model_default, X_test, Y_test, category_names)
         print_evaluation(avg_precision, avg_recall, avg_f1, precision, recall, f1, category_names)
+
+        print('Saving default model...\n')
+        save_model(model_default, "model_default.pkl")
+        save_params(model_default, "model_default_params.pkl")
+        print('default model saved!')        
         
-
         
-        print('Saving model...\n    MODEL: {}'.format(model_filepath))
-        save_model(model, model_filepath)
-
-        print('Trained model saved!')
-
     else:
         print('Please provide the filepath of the disaster messages database '\
               'as the first argument and the filepath of the pickle file to '\
