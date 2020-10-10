@@ -90,7 +90,7 @@ def tokenize(text):
     #for all entities, add their type to the text
     for entity in text_to_entity_map.keys():
         if entity in text:
-            text = text.replace(entity, text_to_entity_map[entity])
+            text += " " + text_to_entity_map[entity]
         
     tokens = word_tokenize(text)
     
