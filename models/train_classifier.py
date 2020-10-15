@@ -154,6 +154,20 @@ def tokenize(text):
 
 
 def build_model(str_model = ""):
+    '''
+	Build model (pipeline) used for classification
+
+			Parameters:
+					str_model (string): "" (default): a multi-
+                                        class random forest is used with
+                                        TFIDF features
+                                        "+num_chars": a feature union is used
+                                        where the number of characters in a 
+                                        message is added as a feature
+
+			Returns:
+					model (pipeline): classifier 
+	'''
    
     if str_model == "+num_chars":
         pipeline = Pipeline([
@@ -167,19 +181,42 @@ def build_model(str_model = ""):
                 ('num_chars', NumCharsExtractor())
             ])),
     
-            ('clf', MultiOutputClassifier(RandomForestClassifier(n_jobs=20, random_state=42)))
+            ('clf', MultiOutputClassifier(
+                RandomForestClassifier(n_jobs=20, 
+                                       random_state=42)))
         ])        
     else:
         pipeline = Pipeline([
                 ('vect', CountVectorizer(tokenizer=tokenize)),
                 ('tfidf', TfidfTransformer()),
-                ('clf', MultiOutputClassifier(RandomForestClassifier(n_jobs=20, random_state=42)))
+                ('clf', MultiOutputClassifier(
+                    RandomForestClassifier(n_jobs=20, random_state=42)))
             ])
     return pipeline
 
 
 def evaluate_model(model, X_test, Y_test, category_names):
-    #predict "test" 
+    '''
+	Evaluate multiclass-multioutput model performance (precision, recall, 
+    and f1 score)
+
+			Parameters:
+					model (classifier): multiclass-multioutput classifier
+                    X_test (Pandas Dataframe): input data (test set)
+                    Y_test (Pandas Dataframe): output data (test set)
+                    category_names (list): labels of the columns of X
+
+			Returns:
+					avg_precision (double): average precision score
+                    avg_recall    (double): average recall
+                    avg_f1        (double): average f1-score
+                    precision     (list):   list of precision values (one for 
+                                            each label)
+                    recall        (list):   list of recall values (one for 
+                                            each label)
+                    f1            (list):   list of f1 values (one for 
+                                            each label)
+	'''
     Y_test_pred = model.predict(X_test)
     Y_test_pred = pd.DataFrame(data=Y_test_pred, columns=Y_test.columns)
     precision = []
@@ -198,6 +235,22 @@ def evaluate_model(model, X_test, Y_test, category_names):
 
 
 def print_evaluation(avg_precision, avg_recall, avg_f1, precision, recall, f1, category_names):
+    '''
+	prints evaluation scores (obtained by e.g. evaluate_model(...))
+
+			Parameters:
+					avg_precision (double): average precision score
+                    avg_recall    (double): average recall
+                    avg_f1        (double): average f1-score
+                    precision     (list):   list of precision values (one for 
+                                            each label)
+                    recall        (list):   list of recall values (one for 
+                                            each label)
+                    f1            (list):   list of f1 values (one for 
+                                            each label)
+            Returns:
+                    void
+	'''    
     print( " "*20 + "    precision      recall      f1-score")
     for idx, val in enumerate(category_names):
         print(val.ljust(24), end="" )
@@ -207,6 +260,17 @@ def print_evaluation(avg_precision, avg_recall, avg_f1, precision, recall, f1, c
     return
 
 def avg_f1_scorer(estimator, X, y):
+    
+    '''
+	prints evaluation scores (obtained by e.g. evaluate_model(...))
+
+			Parameters:
+					model (classifier): multiclass-multioutput classifier
+                    X (Pandas Dataframe): input data
+                    y (Pandas Dataframe): output data
+            Returns:
+                    avg_f1 (double): average f1 score
+	'''        
     Y_pred = estimator.predict(X)
     f1 = []
     # y is a Dataframe -> use.to_numpy()
@@ -218,8 +282,28 @@ def avg_f1_scorer(estimator, X, y):
     
 
 def optimize_model( model, X_test, Y_test, X_train, Y_train, category_names ):
+    '''
+	Perform grid search model optimization. For scoring, the avg_f1_scorer(...)
+    is used
+
+			Parameters:
+					model (classifier): multiclass-multioutput classifier
+                    X_test  (Pandas Dataframe): input data (test set)
+                    Y_test  (Pandas Dataframe): output data (test set)
+                    X_train (Pandas Dataframe): input data (training set)
+                    Y_train (Pandas Dataframe): output data (training set)                    
+                    category_names (list): labels of the columns of X
+
+			Returns:
+					model (classifier): multiclass-multioutput classifier
+	'''    
     parameters = getParameters()
-    cv = GridSearchCV(model, param_grid=parameters, cv=5, scoring = avg_f1_scorer, verbose=100, n_jobs=10)
+    cv = GridSearchCV(model, 
+                      param_grid = parameters, 
+                      cv = 5, 
+                      scoring = avg_f1_scorer, 
+                      verbose = 100, 
+                      n_jobs = 10)
     cv.fit(X_train, Y_train)
     
     print( "best score = %8.6f" % ( cv.best_score_ ) )
@@ -229,10 +313,30 @@ def optimize_model( model, X_test, Y_test, X_train, Y_train, category_names ):
 
 
 def save_model(model, model_filepath):
+    '''
+	Save classifier in a pickle file
+
+			Parameters:
+					model (classifier): multiclass-multioutput classifier
+                    model_filepath  (string): output file name
+
+			Returns:
+					void
+	'''        
     pickle.dump( model, open( model_filepath, "wb" ) )
     return
 
 def save_params(model, params_filepath):
+    '''
+	Save classifier parameters in a pickle file
+
+			Parameters:
+					model (classifier): multiclass-multioutput classifier
+                    model_filepath  (string): output file name
+
+			Returns:
+					void
+	'''           
     params = model.get_params().copy()
     pickle.dump( params, open( params_filepath, "wb" ) )
     return
@@ -247,29 +351,28 @@ def main():
         X = X["message"]
         X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2)
         
-        if True:
-            print('Building model...')
-            model = build_model()
-            
-            print('Optimize model...')
-            model = optimize_model( model, X_test, Y_test, X_train, Y_train, category_names )
-            print('Evaluating optimized model...')
-            avg_precision, avg_recall, avg_f1, precision, recall, f1 = evaluate_model(model, X_test, Y_test, category_names)
-            print_evaluation(avg_precision, avg_recall, avg_f1, precision, recall, f1, category_names)        
-            print(model.get_params())
-        
-            print('Saving model...\n    MODEL: {}'.format(model_filepath))
-            save_model(model, model_filepath)
-            save_params(model, "best_params.pkl")
-            print('Optimized model saved!')
-       
         print('Building model...')
+        model = build_model()
+        
+        print('Optimize model...')
+        model = optimize_model( model, X_test, Y_test, X_train, Y_train, category_names )
+        print('Evaluating optimized model...')
+        avg_precision, avg_recall, avg_f1, precision, recall, f1 = evaluate_model(model, X_test, Y_test, category_names)
+        print_evaluation(avg_precision, avg_recall, avg_f1, precision, recall, f1, category_names)        
+        print(model.get_params())
+    
+        print('Saving model...\n    MODEL: {}'.format(model_filepath))
+        save_model(model, model_filepath)
+        save_params(model, "best_params.pkl")
+        print('Optimized model saved!')
+       
+        print('Building default model...')
         model_default = build_model()        
         
-        print('Training model...')
+        print('Training default model...')
         model_default.fit(X_train, Y_train)
         
-        print('Evaluating model...')
+        print('Evaluating default model...')
         avg_precision, avg_recall, avg_f1, precision, recall, f1 = evaluate_model(model_default, X_test, Y_test, category_names)
         print_evaluation(avg_precision, avg_recall, avg_f1, precision, recall, f1, category_names)
 
