@@ -7,6 +7,7 @@ Created on Sat Oct 10 20:49:34 2020
 
 import spacy
 import pickle
+from train_classifier import load_data
 #!python -m spacy download en_core_web_sm
 
 # Load English tokenizer, tagger, parser, NER and word vectors
@@ -17,10 +18,6 @@ database_filepath = "./../data/DisasterResponsePipelineData.db"
 
 X, Y, category_names = load_data(database_filepath)
 X = X["message"]
-
-doc = nlp(text)
-
-
 
 text_to_entity_map = {}
 

@@ -35,7 +35,22 @@ lemmatizer = WordNetLemmatizer()
 
 
 def getParameters():
-        return {
+    """get set of parameters for grid search
+    
+    the set of all available parameters fro a certain model can be 
+    retrieved by callling model.get_params()
+
+    Parameters
+    ----------
+    None
+        
+    Returns
+    -------
+    dictionary
+        model parameters and their values
+    """    
+    
+    return {
          'vect__analyzer': ['word'],
          'vect__binary': [False],
          'vect__decode_error': ['strict'],
@@ -43,9 +58,9 @@ def getParameters():
          'vect__input': ['content'],
          'vect__lowercase': [True],
          'vect__max_df': [1.0],
-         'vect__max_features': [900],
+         'vect__max_features': (850, 900, 950),
          'vect__min_df': [1],
-         'vect__ngram_range': ((1, 1), (1, 2)),
+         'vect__ngram_range': [(1, 1)],
          'vect__preprocessor': [None],
          'vect__stop_words': [None],
          'vect__strip_accents': [None],
@@ -53,8 +68,8 @@ def getParameters():
          'vect__vocabulary': [None],
          'tfidf__norm': ['l2'],
          'tfidf__smooth_idf': [True],
-         'tfidf__sublinear_tf': [False],
-         'tfidf__use_idf': [False],
+         'tfidf__sublinear_tf': (True, False),
+         'tfidf__use_idf': (True, False),
          'clf__estimator__bootstrap': [True],
          'clf__estimator__class_weight': [None],
          'clf__estimator__criterion': ['gini'],
@@ -75,14 +90,50 @@ def getParameters():
         }
 
 def load_data(database_filepath):
+    """load data from an SQL database
+
+    Parameters
+    ----------
+    database_filepath : full filepath to an SQL database
+        
+    Returns
+    -------
+    pandas dataframe (X)
+        available data as input e.g. for a machine learning algorithm
+    pandas dataframe (Y)
+        labels as target e.g. for a machine learning algorithm    
+    python list (column names)
+        names of the columns in Y
+    """    
+    
     engine = create_engine('sqlite:///' + database_filepath)
-    df = pd.read_sql_table(table_name="DisasterResponsePipelineData", con=engine)
+    df = pd.read_sql_table(table_name="DisasterResponsePipelineData", 
+                           con=engine)
     X = df[["message", "original", "genre"]]
     Y = df.iloc[:,4:]
     return X, Y, Y.columns
 
 
 def tokenize(text):
+    """takenize a dokument (words separated by whitespaces)
+    
+       steps performed
+       * replace all urls by 'urlplaceholder'
+       * replace entities by their type, e.g. 'name', 'city', 'person', ...
+       * text is tokenized (whitespace characters)
+       * convert to lower case
+       * perform lemmatization
+
+    Parameters
+    ----------
+    text : string of charactes that contains words
+        
+    Returns
+    -------
+    clean_tokens
+        list of individual words
+    """     
+    
     detected_urls = re.findall(url_regex, text)
     for url in detected_urls:
         text = text.replace(url, "urlplaceholder")
