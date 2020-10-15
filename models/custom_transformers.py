@@ -7,11 +7,41 @@ from nltk import pos_tag
 
 
 class NumCharsExtractor(BaseEstimator, TransformerMixin):
+    '''
+	Transformer to be used in a pipieline / feature union.
+    Extracts the length of each document in an input dataset (X)
 
+			Parameters:
+					None
+
+	'''
     def fit(self, x, y=None):
+        '''
+    	fit-method required for the class to function as a transformer/estimator
+        
+        can be called, but does nothing
+        
+                Returns:
+                    self
+            
+    
+    	'''        
         return self
 
     def transform(self, X):
+        '''
+    	transforms the X (input) data
+    
+    			Parameters:
+    					X (pandas DataFrame): input data
+    
+    			Returns:
+    					X_num_chars (pandas DataFrame): Nx1 dataframe where 
+                                                        each element specifies 
+                                                        the number of 
+                                                        characters in 
+                                                        the respective text
+    	'''
         # extract number of characters from a document ("text")
         X_num_chars = np.ones(X.shape, dtype=bool)
         for idx, elem in enumerate(X):
@@ -21,7 +51,15 @@ class NumCharsExtractor(BaseEstimator, TransformerMixin):
 
 
 class StartingVerbExtractor(BaseEstimator, TransformerMixin):
+    '''
+	Transformer to be used in a pipieline / feature union.
+    Extracts, if a document in an input dataset (X) starts with a verb
 
+			Parameters:
+					None
+
+	'''
+    
     def starting_verb(self, text):
         # tokenize by sentences
         sentence_list = sent_tokenize( text )
@@ -40,9 +78,31 @@ class StartingVerbExtractor(BaseEstimator, TransformerMixin):
             return False
 
     def fit(self, x, y=None):
+        '''
+    	fit-method required for the class to function as a transformer/estimator
+        
+        can be called, but does nothing
+        
+                Returns:
+                    self
+                
+    
+    	'''            
         return self
 
     def transform(self, X):
+        '''
+    	transforms the X (input) data
+    
+    			Parameters:
+    					X (pandas DataFrame): input data
+    
+    			Returns:
+    					X_tagged (pandas DataFrame): Nx1 dataframe where 
+                                                     each element specifies if
+                                                     the respective text starts
+                                                     with a verb
+    	'''        
         # apply starting_verb function to all values in X
         X_tagged = np.ones(X.shape, dtype=bool)
         for idx, elem in enumerate(X):

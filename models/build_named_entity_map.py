@@ -5,6 +5,22 @@ Created on Sat Oct 10 20:49:34 2020
 @author: herborts
 """
 
+
+"""
+for text classification, named entities like names (Peter Parker), 
+places (Taj Mahal) or cities (Munich) may not be needed explicitly.
+Possibly, the category (name, place, city, ...) is more helpful for a 
+classifier since it is only important THAT a city is mentioned, not, WHICH.
+
+Since the 'spacy' module did not work well when pickling and transferring
+a trained model, this script extracts the relevant entities from the
+samples and provides a conversion as a dictionary.
+
+That dictionary can be loaded from "text_to_entity_map.pck" and used when
+cleaning the data before training a model.
+"""
+
+
 import spacy
 import pickle
 from train_classifier import load_data
