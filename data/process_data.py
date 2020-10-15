@@ -8,6 +8,19 @@ from sqlalchemy import create_engine
 
 def load_data(messages_filepath, categories_filepath):
     
+    '''
+	Load messages and categories from files
+
+			Parameters:
+					messages_filepath (string): filename of the csv-file 
+                                                containing the messages
+                    categories_filepath (string): filename of the csv-file 
+                                                  containing the categories
+
+			Returns:
+					df (Pandas DataFrame)
+	'''       
+    
     #-- load from file
     messages   = pd.read_csv(messages_filepath)
     categories = pd.read_csv(categories_filepath)
@@ -21,6 +34,20 @@ def load_data(messages_filepath, categories_filepath):
 
 
 def clean_data(df):
+    
+    '''
+	Clean text data in a Dataframe. Mainly, the text labels are transformed
+    into columns with the label name and entries with the label value.
+
+			Parameters:
+					df (Pandas DataFrame): dataframe containing the raw 
+                                           messages and categories data
+
+			Returns:
+					df (Pandas DataFrame)
+	'''       
+    
+    
     #-- now, take care of the column names
     categories = df["categories"].str.split(";", expand=True)
 
@@ -55,6 +82,17 @@ def clean_data(df):
 
 
 def save_data(df, database_filename):
+    '''
+	Save dataframe in an SQL database
+
+			Parameters:
+					df (Pandas DataFrame): dataframe containing the 
+                                           messages and categories data
+					database_filename (string): filename of the target SQL 
+                                                database
+			Returns:
+					void
+	'''       
     engine = create_engine('sqlite:///' + database_filename)
     df.to_sql('DisasterResponsePipelineData', engine, index=False, if_exists = "replace")
 
