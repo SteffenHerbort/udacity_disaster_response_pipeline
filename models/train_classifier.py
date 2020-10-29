@@ -37,8 +37,12 @@ lemmatizer = WordNetLemmatizer()
 def getParameters():
     """get set of parameters for grid search
     
-    the set of all available parameters fro a certain model can be 
+    the set of all *available* parameters fro a certain model can be 
     retrieved by callling model.get_params()
+    
+    Note, that getting all available parameters (instead of just 
+    the needed ones) makes it later easier to understand the 
+    dimensionality of the parameter space.
 
     Parameters
     ----------
