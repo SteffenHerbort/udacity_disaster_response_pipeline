@@ -11,6 +11,10 @@ from plotly.graph_objs import Bar
 import joblib
 from sqlalchemy import create_engine
 
+import os
+os.environ["FLASK_ENV"] = "development"
+os.environ["FLASK_DEBUG"] = "1"
+
 
 app = Flask(__name__)
 
@@ -43,10 +47,58 @@ def index():
     # TODO: Below is an example - modify to extract data for your own visuals
     genre_counts = df.groupby('genre').count()['message']
     genre_names = list(genre_counts.index)
+    df_category_counts = (df
+                          .drop(["id", "message", "genre"], axis=1)
+                          .sum()
+                          .sort_values(ascending=False))
+    
+    df_message_length = (df["message"]
+                         .str.len()
+                         .sort_values(ascending=False)
+                         .reset_index(drop=True))
+
     
     # create visuals
     # TODO: Below is an example - modify to create your own visuals
+
     graphs = [
+        {
+            'data': [
+                Bar(
+                    x=df_category_counts.index,
+                    y=df_category_counts,
+                    marker_color='orange'
+                )
+            ],
+
+            'layout': {
+                'title': 'Distribution of Message Categories',
+                'yaxis': {
+                    'title': "Count"
+                },
+                'xaxis': {
+                    'title': "Category"
+                }
+            }
+        },
+        {
+            'data': [
+                Bar(
+                    x=df_message_length.index,
+                    y=df_message_length,
+                )
+            ],
+
+            'layout': {
+                'title': 'Message length',
+                'yaxis': {
+                    'title': "Character Count"
+                },
+                'xaxis': {
+                    'title': "message number"
+                }
+            }
+        },        
         {
             'data': [
                 Bar(
@@ -64,7 +116,7 @@ def index():
                     'title': "Genre"
                 }
             }
-        }
+        }        
     ]
     
     # encode plotly graphs in JSON
